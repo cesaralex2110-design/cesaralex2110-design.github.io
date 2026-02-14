@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nuestra Historia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #050505;
+            font-family: 'Montserrat', sans-serif;
+            color: white;
+            touch-action: none;
+        }
+
+        #canvas1 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* --- Contenedores de Texto HTML --- */
+        .text-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            text-align: center;
+            z-index: 20;
+            pointer-events: none;
+            transition: opacity 1s ease;
+            opacity: 0;
+        }
+
+        .text-overlay.visible {
+            opacity: 1;
+        }
+
+        h1,
+        h2 {
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 2rem;
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        .highlight {
+            color: #ff3366;
+        }
+
+        /* --- Candado UI --- */
+        #lock-ui {
+            top: 30%;
+        }
+
+        #lock-title {
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+
+        /* --- Historia UI --- */
+        #story-text {
+            font-size: 1.8rem;
+            font-weight: 300;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        /* --- Pregunta Final UI --- */
+        #question-container {
+            pointer-events: auto;
+            z-index: 50;
+            /* Por encima de todo para asegurar el clic */
+        }
+
+        .big-question {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: #fff;
+        }
+
+        .action-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 0 10px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-yes {
+            background: #ff3366;
+            color: white;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.4);
+        }
+
+        .btn-no {
+            background: #555;
+            color: #ccc;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* --- UI General --- */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #progress-container {
+            display: flex;
+            gap: 5px;
+            padding: 15px;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .progress-segment {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: white;
+            transition: width 0.1s linear;
+        }
+
+        .nav-controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        #start-btn,
+        #reveal-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 40;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            pointer-events: auto;
+            transition: all 0.5s;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        #reveal-btn {
+            background: #ff3366;
+            border: none;
+            top: 60%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #reveal-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Estilos del Contador Final (Centrado) */
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* Centrado absoluto */
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 1s;
+            /* Fondo semi-transparente para legibilidad sobre el corazón */
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        #countdown.visible {
+            opacity: 1;
+        }
+
+        .timer-label {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            color: #fff;
+            font-weight: 300;
+        }
+
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            #story-text {
+                font-size: 1.4rem;
+            }
+
+            .big-question {
+                font-size: 1.8rem;
+            }
+
+            #lock-ui {
+                top: 25%;
+            }
+
+            #lock-title {
+                font-size: 1.2rem;
+            }
+
+            .action-btn {
+                padding: 12px 30px;
+                font-size: 1rem;
+                display: block;
+                margin: 10px auto;
+                width: 80%;
+            }
+
+            .timer {
+                font-size: 1.5rem;
+            }
+        }
+
+        .hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas1"></canvas>
+
+    <!-- Música de Fondo -->
+    <audio id="musica-fondo" loop>
+        <source src="musica.mp3" type="audio/mp3">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+
+    <!-- UI Candado -->
+    <div id="lock-ui" class="text-overlay hidden">
+        <div id="lock-title">Ingresa nuestro<br><span style="color: #fff; font-weight: bold;">Dia de Novios</span>
+        </div>
+    </div>
+
+    <!-- UI Historia -->
+    <div id="story-container" class="text-overlay">
+        <h2 id="story-text"></h2>
+    </div>
+
+    <!-- UI Pregunta Final -->
+    <div id="question-container" class="text-overlay hidden">
+        <h1 class="big-question">¿Puedo ser tu san valentin?</h1>
+        <button class="action-btn btn-yes" id="btn-yes-html">Como no cesarin ❤️</button>
+        <button class="action-btn btn-no" id="btn-no-html">No...</button>
+    </div>
+
+    <!-- UI Navegación -->
+    <div class="ui-layer">
+        <div id="progress-container"></div>
+        <div class="nav-controls" id="nav-controls">
+            <button class="nav-btn" id="prev-btn">❮</button>
+            <button class="nav-btn" id="next-btn">❯</button>
+        </div>
+    </div>
+
+    <button id="start-btn">Comenzar</button>
+    <button id="reveal-btn">¿Que sigue lau?</button>
+
+    <div id="countdown">
+        <div class="timer-label">Solo queda este tiempo para vernos</div>
+        <div class="timer" id="timer-val">00d 00h 00m 00s</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas1');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const startBtn = document.getElementById('start-btn');
+        const revealBtn = document.getElementById('reveal-btn');
+        const lockUI = document.getElementById('lock-ui');
+        const storyContainer = document.getElementById('story-container');
+        const storyText = document.getElementById('story-text');
+        const questionContainer = document.getElementById('question-container');
+        const btnYes = document.getElementById('btn-yes-html');
+        const btnNo = document.getElementById('btn-no-html');
+        const progressContainer = document.getElementById('progress-container');
+        const navControls = document.getElementById('nav-controls');
+        const countdownEl = document.getElementById('countdown');
+        const timerVal = document.getElementById('timer-val');
+
+        let particles = [];
+        let currentState = 'intro';
+
+        // --- Configuración Candado ---
+        let passcode = [0, 0, 0, 0, 0, 0];
+        const startDate = new Date(2024, 7, 20);
+        const targetDay = startDate.getDate();
+        const targetMonth = startDate.getMonth() + 1;
+        const targetYear = startDate.getFullYear() % 100;
+        const correctCode = [Math.floor(targetDay / 10), targetDay % 10, Math.floor(targetMonth / 10), targetMonth % 10, Math.floor(targetYear / 10), targetYear % 10];
+        let clickZones = [];
+        let currentCorrectDigits = 0;
+
+        // --- Configuración Historia ---
+        const today = new Date();
+        const diffTime = Math.abs(today - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const monthsNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const formattedDateStr = `${startDate.getDate()} de ${monthsNames[startDate.getMonth()]} del ${startDate.getFullYear()}`;
+
+        const storySequence = [
+            { text: "Todavia me acuerdo de los nervioso que estaba cuando iba a nuestra primera cita, despues de un sushito y pasar por un regalillo de cumpleaños, nunca imagine todo lo que llegaría a vivir contigo, los momentos, recuerdos y lugares que visitamos, y todo lo que nos falta por vivir aún ...", time: 9000 },
+            { text: `Pero el <span class="highlight">${formattedDateStr}</span> fue increible .`, time: 6000 },
+            { text: "Fue el momento en el que mi mundo cambio, para ahora compartir mi vida y recuerdos contigo, me llena de felicidad imaginar todo lo que quiero y espero vivir contigo...", time: 6000, effect: 'world_grey' },
+            { text: "Me llenaste de historias que solo tú supiste escribir, palabras, acciones y momentos que me hacen estar enamorado cada día más de ti.", time: 6000, effect: 'world_color' },
+            { text: "En esa fecha no solo aceptamos caminar juntos; decidimos que cualquier camino, si es juntos siempre valdrá la pena.", time: 7000 },
+            { text: `Hoy, <span class="highlight">${diffDays} despues de tantos días </span>, sigo mirando esa misma fecha como el inicio de la mejor historia que viviré.`, time: 7000 }
+        ];
+
+        let storyIndex = -1;
+        let storyTimer = null;
+        let heartBeatScale = 1; // Variable para el latido 
+
+        const mouse = { x: null, y: null, radius: 40 };
+        window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            if (currentState === 'lock') checkLockClick(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            if (e.cancelable) e.preventDefault();
+            const x = e.touches[0].clientX;
+            const y = e.touches[0].clientY;
+            mouse.x = x; mouse.y = y;
+            if (currentState === 'lock') checkLockClick(x, y);
+        }, { passive: false });
+
+        startBtn.addEventListener('click', () => {
+            startBtn.classList.add('hidden');
+            const audio = document.getElementById('musica-fondo');
+            audio.volume = 0.5; // Volumen al 50%
+            audio.play().catch(error => {
+                console.log("Reproducción automática bloqueada, esperando interacción usuario:", error);
+            });
+            initLockState();
+        });
+
+        revealBtn.addEventListener('click', () => {
+            revealBtn.classList.remove('visible');
+            revealBtn.classList.add('hidden');
+            showFinalQuestion();
+        });
+
+        // Soporte táctil directo para mayor sensibilidad en móviles
+        btnYes.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            celebrate();
+        });
+
+        btnNo.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            particles.forEach(p => { p.vx = (Math.random() - 0.5) * 20; p.vy = (Math.random() - 0.5) * 20; });
+            alert("Chin, yo digo que lo pienses bien amorcillo");
+        });
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (storyIndex > 0) { clearTimeout(storyTimer); storyIndex--; loadStoryScene(storyIndex); }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (storyIndex < storySequence.length - 1) { clearTimeout(storyTimer); storyIndex++; loadStoryScene(storyIndex); }
+            else { clearTimeout(storyTimer); endStoryMode(); }
+        });
+
+        btnYes.addEventListener('click', celebrate);
+
+        btnNo.addEventListener('click', () => {
+            particles.forEach(p => { p.vx = (Math.random() - 0.5) * 20; p.vy = (Math.random() - 0.5) * 20; });
+            alert("Chin, yo digo que lo pienses bien amorcillo");
+        });
+
+        // --- Generadores de Partículas ---
+
+        function getNumberPoints(text, x, y, size) {
+            ctx.font = `900 ${size}px Arial`;
+            ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillText(text, x, y);
+            const gap = canvas.width < 600 ? 3 : 2;
+            const points = [];
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            for (let py = 0; py < canvas.height; py += gap) {
+                for (let px = 0; px < canvas.width; px += gap) {
+                    if (data[(py * canvas.width + px) * 4 + 3] > 128) points.push({ x: px, y: py, z: 0 });
+                }
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return points;
+        }
+
+        function getLockCoordinates() {
+            let points = [];
+            clickZones = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const isMobile = canvas.width < 600;
+            const spacing = isMobile ? canvas.width * 0.13 : 90;
+
+            const startX = -(spacing * 3.5);
+
+            const digitSize = isMobile ? 35 : 70;
+            const arrowSize = digitSize * 0.6;
+            const verticalGap = digitSize * 1.2;
+
+            passcode.forEach((digit, index) => {
+                let xPos = centerX + startX + (index * spacing) + (spacing / 2); // +spacing/2 para centrar el primer dígito en su celda
+
+                // Ajuste fino por los espacios de fecha
+                if (index >= 2) xPos += spacing * 0.5;
+                if (index >= 4) xPos += spacing * 0.5;
+
+                points = points.concat(getNumberPoints(digit.toString(), xPos, centerY, digitSize));
+                points = points.concat(getNumberPoints("▲", xPos, centerY - verticalGap, arrowSize));
+                points = points.concat(getNumberPoints("▼", xPos, centerY + verticalGap, arrowSize));
+
+                clickZones.push({ x: xPos - arrowSize, y: centerY - verticalGap - arrowSize, w: arrowSize * 2, h: arrowSize * 2, index: index, action: 'up' });
+                clickZones.push({ x: xPos - arrowSize, y: centerY + verticalGap - arrowSize, w: arrowSize * 2, h: arrowSize * 2, index: index, action: 'down' });
+            });
+            return points;
+        }
+
+        function getHeartCoordinates(count) {
+            const points = [];
+            const scale = Math.min(canvas.width, canvas.height) / (canvas.width < 600 ? 25 : 18);
+            for (let i = 0; i < count; i++) {
+                let t = Math.random() * Math.PI * 2;
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+                let px = (x * scale) + canvas.width / 2;
+                let py = (y * scale) + canvas.height / 2;
+                let pz = Math.random() * 500 + 100;
+                points.push({ x: px, y: py, z: pz, isBackgroundHeart: true });
+            }
+            return points;
+        }
+
+        function getSphereCoordinates(count, radius) {
+            const points = [];
+            for (let i = 0; i < count; i++) {
+                const theta = Math.random() * 2 * Math.PI;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const x = radius * Math.sin(phi) * Math.cos(theta);
+                const y = radius * Math.sin(phi) * Math.sin(theta);
+                const z = radius * Math.cos(phi);
+                points.push({ x: x + canvas.width / 2, y: y + canvas.height / 2, z: z, isWorld: true });
+            }
+            return points;
+        }
+
+        // --- CLASE PARTÍCULA ---
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.z = (Math.random() - 0.5) * 1000;
+                this.targetX = x; this.targetY = y; this.targetZ = this.z;
+                this.vx = 0; this.vy = 0;
+                this.size = Math.random() * 3 + 2;
+                this.colorHue = Math.random() * 40 + 330;
+                this.colorSat = '80%'; this.colorLight = '50%';
+                this.isHeartParticle = false; // Flag para aplicar latido
+            }
+            update() {
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const dz = this.targetZ - this.z;
+                this.x += dx * 0.1;
+                this.y += dy * 0.1;
+                this.z += dz * 0.1;
+
+                this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.9; this.vy *= 0.9;
+
+                if (this.isWorldParticle) {
+                    const angle = 0.005; const cx = canvas.width / 2; const cz = 0;
+                    const x = this.x - cx; const z = this.z - cz;
+                    this.x = x * Math.cos(angle) - z * Math.sin(angle) + cx;
+                    this.z = x * Math.sin(angle) + z * Math.cos(angle) + cz;
+                }
+            }
+            draw() {
+                const perspective = 800;
+                const scale = perspective / (perspective + this.z);
+                if (scale < 0.1) return;
+
+                let screenX = (this.x - canvas.width / 2) * scale + canvas.width / 2;
+                let screenY = (this.y - canvas.height / 2) * scale + canvas.height / 2;
+
+                // Aplicar Latido si es partícula de corazón final
+                if (this.isHeartParticle && currentState === 'celebration') {
+                    const cx = canvas.width / 2;
+                    const cy = canvas.height / 2;
+                    screenX = cx + (screenX - cx) * heartBeatScale;
+                    screenY = cy + (screenY - cy) * heartBeatScale;
+                }
+
+                const s = this.size * scale;
+                if (s < 0.5) return;
+
+                ctx.fillStyle = `hsla(${this.colorHue}, ${this.colorSat}, ${this.colorLight}, ${scale})`;
+                ctx.beginPath();
+                ctx.moveTo(screenX, screenY + s * 0.2);
+                ctx.bezierCurveTo(screenX - s / 2, screenY - s / 2, screenX - s, screenY + s / 3, screenX, screenY + s);
+                ctx.bezierCurveTo(screenX + s, screenY + s / 3, screenX + s / 2, screenY - s / 2, screenX, screenY + s * 0.2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles(count) {
+            particles = [];
+            const isMobile = canvas.width < 600;
+            const finalCount = isMobile ? 1200 : 2500;
+            for (let i = 0; i < finalCount; i++) {
+                particles.push(new Particle(Math.random() * canvas.width, Math.random() * canvas.height));
+            }
+        }
+
+        // --- Estados y Lógica ---
+
+        function initLockState() {
+            currentState = 'lock';
+            lockUI.classList.remove('hidden');
+            lockUI.classList.add('visible');
+            updateBackgroundHeart(0);
+        }
+
+        function checkLockClick(x, y) {
+            for (let z of clickZones) {
+                if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
+                    changeDigit(z.index, z.action); return;
+                }
+            }
+        }
+
+        function changeDigit(index, action) {
+            passcode[index] = action === 'up' ? (passcode[index] + 1) % 10 : (passcode[index] - 1 + 10) % 10;
+            particles.forEach(p => { if (p.colorSat === '0%') p.z -= 50; });
+            checkCode();
+        }
+
+        function updateBackgroundHeart(correctCount) {
+            const lockTargets = getLockCoordinates();
+            const spareParticles = particles.length - lockTargets.length;
+            const heartParticleCount = Math.floor((correctCount / 6) * spareParticles * 0.95);
+            let heartTargets = [];
+            if (heartParticleCount > 0) heartTargets = getHeartCoordinates(heartParticleCount);
+
+            const finalTargets = lockTargets.concat(heartTargets);
+            assignTargets(finalTargets, { progressiveHeart: true });
+        }
+
+        function checkCode() {
+            let newCorrectCount = 0;
+            passcode.forEach((val, index) => { if (val === correctCode[index]) newCorrectCount++; });
+
+            if (newCorrectCount === 6) {
+                currentState = 'success';
+                updateBackgroundHeart(6);
+                lockUI.classList.remove('visible');
+                setTimeout(() => {
+                    particles.forEach(p => {
+                        if (p.colorSat === '0%') { p.targetZ -= 800; p.colorHue = 350; p.colorSat = '100%'; }
+                    });
+                    setTimeout(initStoryMode, 1000);
+                }, 1500);
+            } else {
+                updateBackgroundHeart(newCorrectCount);
+            }
+        }
+
+        function initStoryMode() {
+            currentState = 'story';
+            progressContainer.innerHTML = '';
+            storySequence.forEach((_, i) => {
+                const seg = document.createElement('div');
+                seg.className = 'progress-segment';
+                const fill = document.createElement('div');
+                fill.className = 'progress-fill';
+                fill.id = `fill-${i}`;
+                seg.appendChild(fill);
+                progressContainer.appendChild(seg);
+            });
+            progressContainer.style.opacity = 1;
+            navControls.style.opacity = 1;
+            storyIndex = 0;
+            loadStoryScene(0);
+        }
+
+        function loadStoryScene(index) {
+            for (let i = 0; i < storySequence.length; i++) {
+                const fill = document.getElementById(`fill-${i}`);
+                if (i < index) fill.style.width = '100%';
+                else if (i > index) fill.style.width = '0%';
+                else fill.style.width = '0%';
+            }
+
+            const scene = storySequence[index];
+            storyText.innerHTML = scene.text;
+            storyContainer.classList.remove('visible');
+            setTimeout(() => { storyContainer.classList.add('visible'); }, 200);
+
+            let targets = [];
+            const isMobile = canvas.width < 600;
+
+            if (scene.effect === 'world_grey' || scene.effect === 'world_color') {
+                const worldRadius = Math.min(canvas.width, canvas.height) / (isMobile ? 3 : 3.5);
+                targets = getSphereCoordinates(isMobile ? 1200 : 2000, worldRadius);
+            }
+
+            const options = { effect: scene.effect };
+            assignTargets(targets, options);
+
+            const currentFill = document.getElementById(`fill-${index}`);
+            currentFill.style.transition = `width ${scene.time}ms linear`;
+            setTimeout(() => { currentFill.style.width = '100%'; }, 50);
+
+            clearTimeout(storyTimer);
+            storyTimer = setTimeout(() => {
+                if (index < storySequence.length - 1) {
+                    storyIndex++;
+                    loadStoryScene(storyIndex);
+                } else {
+                    endStoryMode();
+                }
+            }, scene.time);
+        }
+
+        function endStoryMode() {
+            currentState = 'pre_question';
+            progressContainer.style.opacity = 0;
+            navControls.style.opacity = 0;
+            storyContainer.classList.remove('visible');
+            particles.forEach(p => {
+                p.targetX = Math.random() * canvas.width;
+                p.targetY = Math.random() * canvas.height;
+                p.isWorldParticle = false;
+            });
+            setTimeout(() => { revealBtn.classList.add('visible'); }, 500);
+        }
+
+        function showFinalQuestion() {
+            currentState = 'question';
+            questionContainer.classList.remove('hidden');
+            setTimeout(() => { questionContainer.classList.add('visible'); }, 100);
+
+            const heartPoints = getHeartCoordinates(2000);
+            assignTargets(heartPoints, { isFinalHeart: true });
+        }
+
+        function celebrate() {
+            currentState = 'celebration';
+            questionContainer.classList.remove('visible');
+            setTimeout(() => { questionContainer.classList.add('hidden'); }, 500);
+
+            particles.forEach(p => {
+                p.targetX = Math.random() * canvas.width;
+                p.targetY = Math.random() * canvas.height;
+                p.targetZ = (Math.random() - 0.5) * 2000;
+                p.colorHue = Math.random() * 360;
+                p.colorSat = '100%'; p.colorLight = '60%';
+            });
+
+            setTimeout(() => {
+                const heartBg = getHeartCoordinates(2000);
+                assignTargets(heartBg, { isFinalHeart: true });
+                startCountdown();
+            }, 1000);
+        }
+
+        function startCountdown() {
+            countdownEl.classList.add('visible');
+            const updateTimer = () => {
+                const now = new Date();
+                let valentine = new Date(now.getFullYear(), 1, 15);
+                if (now > valentine) valentine = new Date(now.getFullYear() + 1, 1, 15);
+                const diff = valentine - now;
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const m = Math.floor((diff / 1000 / 60) % 60);
+                const s = Math.floor((diff / 1000) % 60);
+                timerVal.innerText = `${d}d ${h}h ${m}m ${s}s`;
+            };
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        }
+
+        function assignTargets(targets, options = {}) {
+            if (targets.length > particles.length) {
+                const missing = targets.length - particles.length;
+                for (let i = 0; i < missing; i++) particles.push(new Particle(canvas.width / 2, canvas.height / 2));
+            }
+
+            particles.forEach((p, i) => {
+                p.isWorldParticle = false;
+                p.isHeartParticle = false; // Reset
+
+                if (i < targets.length) {
+                    p.targetX = targets[i].x; p.targetY = targets[i].y; p.targetZ = targets[i].z || 0;
+
+                    if (options.progressiveHeart) {
+                        if (targets[i].isBackgroundHeart) { p.colorHue = 350; p.colorSat = '90%'; p.colorLight = '55%'; }
+                        else { p.colorHue = 0; p.colorSat = '0%'; p.colorLight = '100%'; }
+                    }
+                    else if (options.effect === 'world_grey') {
+                        p.isWorldParticle = true; p.colorHue = 0; p.colorSat = '0%'; p.colorLight = Math.random() * 50 + 20 + '%';
+                    }
+                    else if (options.effect === 'world_color') {
+                        p.isWorldParticle = true; p.colorHue = Math.random() * 360; p.colorSat = '80%'; p.colorLight = '60%';
+                    }
+                    else if (options.isFinalHeart) {
+                        p.colorHue = 340; p.colorSat = '100%'; p.colorLight = '50%';
+                        if (targets[i].isBackgroundHeart) {
+                            p.isHeartParticle = true; // Marcar para latido
+                        }
+                    }
+                    else {
+                        p.colorHue = 0; p.colorSat = '0%'; p.colorLight = '100%';
+                    }
+                } else {
+                    p.targetX = Math.random() * canvas.width;
+                    p.targetY = Math.random() * canvas.height;
+                    p.targetZ = (Math.random() - 0.5) * 2000;
+                    p.colorHue = Math.random() * 40 + 330; p.colorSat = '80%'; p.colorLight = '35%';
+                }
+            });
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculo del latido (Sine wave)
+            if (currentState === 'celebration') {
+                const time = Date.now() * 0.003;
+                heartBeatScale = 1 + (Math.sin(time) * 0.05);
+            } else {
+                heartBeatScale = 1;
+            }
+
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
+        }
+
+        initParticles(2000);
+        animate();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            fontSize = Math.min(canvas.width * 0.12, 80);
+            if (currentState === 'lock') updateBackgroundHeart(currentCorrectDigits);
+        });
+
+    </script>
+</body>
+
+</html>
